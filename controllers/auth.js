@@ -1,31 +1,39 @@
 const router = require("express").Router();
-const fs = require("fs");
-const { debugPort } = require("process");
-const dbPath = "./db/user.json";
-// TODO: build a /register controllers
-// let userDB = [
-//   { name: "Tyler", email: "tylermalone@me.com", password: "Malone55" },
-// ];
-router.post("/register", (req, res) => {
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
+router.post("/register", async (req, res) => {
   try {
-    let { name, email, password } = req.body;
-    // TODO: grab a current snapshot of the database
-    let userDB = read();
-    // TODO: check to see if the user exists
-    let userExistArray = userDB.filter((user) => user.email === email);
-    if (userExistArray.length > 0) {
-      throw Error("Email already exists");
+    const { name, email, password } = req.body;
+    // checks if user entered all required values
+    if ((!name, !email, !password)) {
+      throw new Error("The user has provided undefined schema values");
+      res.status(406)({
+        message: `Invalid schema`,
+      });
     }
+    //  Instantiates a new model instance with provided object values
+    let newUser = new User({
+      name,
+      email,
+      password: bcrypt.hashSync(password, 10),
+    });
+    //  save the model document into the collection
+    await newUser.save();
 
-    // TODO: add the new user to the snapshot
-    userDB.push({ name, email, password });
-    console.log(userDB);
+    const token = jwt.sign(
+      // payload
+      { _id: newUser._id },
+      // Secret Key
+      JWT_SECRET_KEY,
+      { expiresIn: "24h" }
+    );
 
-    //  TODO" save the new snapshot to rewrite the file
-    const isSaved = save(userDB);
-    // TODO: What if isSaved is false?
     res.status(201).json({
-      message: isSaved ? `User created` : "We had a problem",
+      message: `user created`,
+      newUser,
+      token,
     });
   } catch (error) {
     res.status(500).json({
@@ -34,28 +42,34 @@ router.post("/register", (req, res) => {
   }
 });
 
-// TODO : build a /login controller
-
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   console.log("login route hit");
   try {
-    let { email, password } = req.body;
-    let userDB = read();
-    // TODO Check to see the user exist
-    let userLogin = userDB.filter((user) => user.email === email);
+    const { email, password } = req.body;
+    const foundUser = await User.findOne({ email });
 
-    // ! checking to see if username does not work
-    if (userLogin.length === 0) {
-      throw Error("user does not exist");
+    if (!foundUser) {
+      res.status(404).json({
+        message: `User not found`,
+        foundUser,
+      });
+    } else {
+      const verifyPwd = await bcrypt.compare(password, foundUser.password);
+      if (verifyPwd) {
+        const token = jwt.sign({ _id: foundUser._id }, JWT_SECRET_KEY, {
+          expiresIn: "24h",
+        });
+        res.status(200).json({
+          message: "User logged in",
+          foundUser,
+          token,
+        });
+      } else {
+        res.status(403).json({
+          message: `Invalid password `,
+        });
+      }
     }
-
-    // ! password does not match
-    if (userLogin[0].password !== password) {
-      throw Error("user password does not match");
-    }
-    res.status(200).json({
-      message: "login success",
-    });
   } catch (error) {
     res.status(500).json({
       message: `${error}`,
@@ -63,20 +77,4 @@ router.post("/login", (req, res) => {
   }
 });
 
-function read() {
-  const file = fs.readFileSync(dbPath);
-  //  converts a JSON object to object literal
-  const fileObj = JSON.parse(file);
-  return fileObj;
-}
-
-function save(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data), (error) => {
-    if (error) {
-      console.log(error);
-      return false;
-    }
-  });
-  return true;
-}
 module.exports = router;

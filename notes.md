@@ -127,3 +127,49 @@ mongoose
 ### Schemas
 
 A well-defined document data structure that will be inserted into collection used to crate a model, and based on `SchemaTypes` (aka: data types)
+
+### Model
+
+a constructor built out of the schematic (Schema) It's responsible for all of the CRUB work from respective co
+
+# Authentication
+
+A process where we identify an indiviual's identity using credentailing ssytem (usually username and password)
+
+### bcryptyjs
+
+a dependency that's easy to use which allows us to encrypt and decrypt the data
+
+### Getting started with bcryptjs
+
+- install it using `npm i bcryptjs`
+- import it your `auth.js ```file:
+
+```js
+const bcrypt = require("bcryptjs");
+```
+
+- assign the value of password as it's added to the db to be the result of bcrypt's `hashSync` method
+- bcrypt takes two parameters: the string of password to hash, and salt
+- salt specifies the amount of times we run the cryptographic algorithm on the password to scramble it
+
+````js
+  let newUser = new User({
+      name,
+      email,
+      password: bcrypt.hashSync(password, 10),
+    });
+    ```
+````
+
+# Authorization
+
+The process of verifying the authenticity of the user
+
+### Session
+
+A process where server generates a session token based on initial authentication and verifies its authenticity each time the user attempts toa cess protected routes (ie: their emails, or dashboard)
+
+### JWT Token
+
+JSON Web Toke. An encoded token that contains payload that has been encrypted. It can be easily decrypted, so it should **Never** contain sensitive information. Its success is based on teh _secret key_. this key verifies the _authenticity_ of the data. it checks if it's genuine and has not been tampered with.
